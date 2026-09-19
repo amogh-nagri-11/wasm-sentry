@@ -101,7 +101,14 @@ model.
 
 ## 5. Transformer track
 
-_Pending: see the end of this file once the run completes._
+Not run to completion, so there is no transformer result. Sequences were
+extracted for real (1,708 fine-tuning, 359 holdout, 5,966 pretraining, with
+the holdout and the near-duplicates of held-out samples kept out of the pool).
+A CPU pretraining run reached two epochs, validation loss 2.05 then 1.81
+against 3.78 for uniform guessing, before the machine ran short of memory and
+the job was stopped. No fine-tuning or cross-validation ran. With 14 training
+positives the comparison would not have supported a conclusion either way; the
+commands in `docs/COLAB-TRAINING-GUIDE.md` run it on a GPU in minutes.
 
 ## 6. What is still missing
 
