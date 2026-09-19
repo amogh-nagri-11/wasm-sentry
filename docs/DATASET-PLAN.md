@@ -316,10 +316,13 @@ doesn't go in. It's also what goes into the trained model's
 
 `crossValidate` is for model selection only. If you tune the threshold, L2,
 or epochs against CV output, CV stops being an unbiased estimate. Run this
-last, after 3.1–3.3 — `split-holdout.ts` moves any file whose SHA-256 starts
-with `0`, `1`, or `2` (≈18.75% of the corpus, reproducible, stable as the
+last, after 3.1–3.3 — `split-holdout.ts` moves any file whose SHA-256 **ends**
+in `0`, `1`, or `2` (≈18.75% of the corpus, reproducible, stable as the
 corpus grows) from `$CORPUS/<class>/` into `$CORPUS/holdout/<class>/`; override
-the digits with `--prefixes`. Because it runs after clustering, an entire
+the digits with `--digits`. (It used to read the leading digit. Clustering
+keeps the alphabetically first member, which in a hash-named corpus is the
+smallest hash, so nearly every large cluster's survivor was being held out;
+the script's header has the measurement.) Because it runs after clustering, an entire
 near-duplicate cluster naturally lands on one side or the other — it can't be
 split across the boundary.
 

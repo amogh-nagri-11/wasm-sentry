@@ -1,9 +1,23 @@
 /**
  * Split a final, cleaned corpus into a training set and a held-out test set,
- * by SHA-256 prefix -- reproducible, and stable as the corpus grows (a file
- * added later lands wherever its hash says, not wherever it happened to sort).
+ * by the LAST hex digit of the SHA-256 -- reproducible, and stable as the
+ * corpus grows (a file added later lands wherever its hash says, not wherever
+ * it happened to sort).
  *
- *   npm run split-holdout -w @wasm-sentry/core -- <corpus-dir> [--prefixes 0,1,2]
+ *   npm run split-holdout -w @wasm-sentry/core -- <corpus-dir> [--digits 0,1,2]
+ *
+ * The last digit, not the first, and the difference is not cosmetic.
+ * `cluster-corpus` keeps the alphabetically first file of every cluster, and a
+ * corpus harvested from WasmBench is named by hash -- so a cluster's survivor
+ * is the *smallest* hash among its members, which starts with 0, 1 or 2 far
+ * more often than chance. Splitting on the leading digit therefore sent the
+ * representatives of the big clusters to the holdout almost without
+ * exception: measured on a real corpus, 4,921 of 5,538 collapsed files
+ * belonged to a cluster whose survivor was held out, the holdout took 29% of
+ * benign and 40% of malicious instead of 19%, and the families with the most
+ * variants -- the ones clustering exists for -- vanished from training. The
+ * minimum of a set of hashes is only biased in its leading digits; the
+ * trailing ones are still uniform.
  *
  * Run this LAST, after filter-corpus, dedupe-corpus and cluster-corpus.
  * Moves matching files from <corpus-dir>/<class>/ into
@@ -15,12 +29,16 @@ import { join } from "node:path";
 import { sha256 } from "../src/hash.js";
 
 const args = process.argv.slice(2);
-const corpusDir = args.find((arg) => !arg.startsWith("--"));
-const prefixIndex = args.indexOf("--prefixes");
-const prefixes = (prefixIndex >= 0 ? args[prefixIndex + 1]! : "0,1,2").split(",");
+const corpusDir = args.find((arg, i) => !arg.startsWith("--") && args[i - 1] !== "--digits");
+if (args.includes("--prefixes")) {
+  console.error("--prefixes was replaced by --digits (the split now reads the hash's last digit; see the header).");
+  process.exit(2);
+}
+const digitIndex = args.indexOf("--digits");
+const digits = (digitIndex >= 0 ? args[digitIndex + 1]! : "0,1,2").split(",");
 
 if (!corpusDir) {
-  console.error("usage: split-holdout <corpus-dir> [--prefixes 0,1,2]");
+  console.error("usage: split-holdout <corpus-dir> [--digits 0,1,2]");
   process.exit(2);
 }
 
@@ -40,13 +58,13 @@ async function splitClass(className: "benign" | "malicious"): Promise<void> {
     const path = join(dir, name);
     if (!statSync(path).isFile()) continue;
     const hash = await sha256(readFileSync(path));
-    if (prefixes.some((p) => hash.startsWith(p))) {
+    if (digits.some((d) => hash.endsWith(d))) {
       mkdirSync(holdoutDir, { recursive: true });
       renameSync(path, join(holdoutDir, name));
       moved++;
     }
   }
-  console.log(`${className}: ${moved}/${names.length} moved to holdout (prefixes ${prefixes.join(",")})`);
+  console.log(`${className}: ${moved}/${names.length} moved to holdout (last hash digit in ${digits.join(",")})`);
 }
 
 await splitClass("benign");
