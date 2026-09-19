@@ -10,6 +10,7 @@ export * from "./js/features.js";
 export * from "./js/heuristics.js";
 export * from "./js/analysis.js";
 export * from "./ml/features.js";
+export * from "./ml/sequences.js";
 export * from "./ml/model.js";
 export * from "./ml/train.js";
 export * from "./ml/evaluate.js";

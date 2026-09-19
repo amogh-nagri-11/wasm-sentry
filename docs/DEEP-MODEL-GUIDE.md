@@ -1,12 +1,15 @@
 # Deep model track: pretrain + fine-tune an opcode-sequence classifier
 
 Full guide for the "fine-tuned model" discussed as an alternative to the
-current linear classifier. **Status: a design guide, not verified code.**
-Unlike `docs/DATASET-PLAN.md`'s four corpus scripts (which were written,
-typechecked, and smoke-tested against real fixtures), nothing below has been
-run — there's no PyTorch/ONNX toolchain in this environment and no trained
-model to validate against. Treat the code blocks as a precise skeleton to
-implement and test yourself, not a working artifact.
+current linear classifier. **Status: the design, plus working plumbing, and no
+result.** Sequence extraction is built and tested
+(`core/src/ml/sequences.ts`, `core/scripts/extract-sequences.ts`). The model
+and training loop below exist as runnable code in
+`training/opcode_transformer.py`, exercised end to end on a CPU with a handful
+of sequences. Nothing has been trained on a real corpus, so nothing here says
+whether the idea works. `docs/COLAB-TRAINING-GUIDE.md` is the step-by-step;
+the code blocks in this file are the design sketch and the script is the
+authority where they differ.
 
 ## 0. The decision, stated once
 
@@ -56,7 +59,7 @@ cp /tmp/npm-wasm/**/*.wasm "$PRETRAIN_POOL"/ 2>/dev/null
 find "$PRETRAIN_POOL" -type f | wc -l   # expect ~8,000-9,000
 ```
 
-## 2. New step: extract opcode sequences (not yet built — build this first)
+## 2. Extract opcode sequences (built: `core/scripts/extract-sequences.ts`)
 
 Neither `analyzeWasm` nor `vectorise` currently emit a raw instruction
 *sequence* — only aggregate counts and ratios (that's what the linear model
@@ -64,7 +67,17 @@ needs, and it's correct that it doesn't carry more). The deep model needs
 the sequence itself, so this is one new script:
 `core/scripts/extract-sequences.ts`, run once per pool.
 
-**Behavior it needs (write this before anything else):**
+**As built, it differs from the sketch below in three ways**, all recorded in
+`core/src/ml/sequences.ts`: the vocabulary has six special tokens (`PAD`,
+`MASK`, `CLS`, `UNK`, `OTHER`, `SEP`), 44 ids in all, written to a
+`.vocab.json` beside the output so nothing downstream hard-codes a size; a
+function too long for the window is cut at the header of its largest loop
+rather than from the top, because a kernel's prologue looks like anyone's; and
+when the primary function does not fill the window, the next-largest functions
+follow behind a `SEP`, up to four. Bodies are re-decoded for the chosen
+functions only, so the feature walk did not need a per-instruction hook.
+
+**The original specification:**
 
 1. For each `.wasm` file, run `analyzeWasm` as today to get `kernelCandidate`
    and function boundaries — reuse the existing walk in
