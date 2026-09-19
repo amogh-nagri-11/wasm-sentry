@@ -127,7 +127,7 @@ pip install torch onnx onnxruntime numpy
 
 No `transformers` dependency — the model is small enough (see below) to
 write directly in ~150 lines of PyTorch, which avoids pulling in a
-multi-gigabyte dependency for a 2-3M parameter model and keeps the
+multi-gigabyte dependency for a sub-million parameter model and keeps the
 architecture fully visible instead of hidden behind a library default.
 
 ## 4. Architecture
@@ -137,13 +137,13 @@ LLM, and it should be:
 
 | Hyperparameter | Value | Why |
 |---|---|---|
-| Vocabulary size | `len(OPCODE_VOCABULARY) + 4` (≈40) | Matches the project's existing opcode set + special tokens |
+| Vocabulary size | `len(OPCODE_VOCABULARY) + 6` = 44 | Matches the project's existing opcode set + special tokens |
 | Sequence length | 512 | §2.4 |
 | Embedding dim | 128 | Small vocab doesn't need more |
 | Layers | 4 | Enough to compose "this loop body does bitwise ops on loaded memory," not more |
 | Attention heads | 4 | Standard 32-dim-per-head split |
 | Feedforward dim | 512 | 4x embedding, standard ratio |
-| Parameters | ~2-3M | Trains on a laptop CPU in hours, on the optional GPU in minutes |
+| Parameters | 870,317 (counted; an earlier draft guessed 2-3M) | Measured on a laptop CPU: ~11 minutes per pretraining epoch over 5,668 sequences |
 
 This is intentionally far smaller than any general-purpose language model —
 the vocabulary is ~40 tokens, not ~50,000, because it only ever has to
@@ -311,7 +311,7 @@ shipping this at all.
 
 ## 9. What to expect
 
-Realistically: on a fine-tuning set of a few hundred examples, a 2-3M
+Realistically: on a fine-tuning set of a few hundred examples, a 0.9M
 parameter transformer — even pretrained — is not guaranteed to beat a
 73-feature linear model that already encodes the exact structural signals
 (bitwise ratio, kernel candidate, memory shape) domain knowledge says matter.
