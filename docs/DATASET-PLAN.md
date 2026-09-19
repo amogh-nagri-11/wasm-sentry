@@ -67,10 +67,23 @@ WasmBench) doesn't help, diversity of origin does.
    # 1. exclude anything whose provenance string names a known miner/pool
    jq -r 'to_entries[] | select(.value.files[]? |
      (.repository // "") + " " + (.absolute_path // "") |
-     test("coinhive|cryptonight|crypto-?loot|coinimp|webminepool|jsecoin|monerise|xmr-?stak|deepminer"; "i")
+     test("coinhive|coin-hive|cryptonight|crypto-?loot|coinimp|webminepool|jsecoin|monerise|xmr|deepminer|miner|monero|mining|minero|randomx|yespower|nimiq|webchain"; "i")
    ) | .key' filtered.pretty.json > /tmp/wasmbench-exclude-hashes.txt
    grep -vFf /tmp/wasmbench-exclude-hashes.txt filtered.list.txt > /tmp/wasmbench-keep-hashes.txt
    ```
+   **The keyword list above was widened on 2026-09-20, and the earlier one
+   was measurably wrong.** The first version named products (`coinhive`,
+   `deepminer`, ...) and excluded 27 binaries. Checked against content, it
+   left **56 verified miners in `benign/`**: thirty builds of the `jazecminer`
+   Equihash miner and a `hushminer` from the SEISMIC dataset, twelve MinerRay
+   crawl samples whose CryptoNight API is renamed to a random string, two Nimiq
+   Argon2d miners, a `minero.cc` payload -- and nine modules that export
+   `_cryptonight_hash` under a filename that says nothing. Any number measured
+   on a corpus filtered that way (8,434 benign) counted those as false
+   positives when the detector was right. The wide list over-matches on purpose
+   (EOS contracts called `*miner`, `hoffmann-mineral.com`); what it catches is
+   sorted by content, not thrown away -- see §2, step 0.
+
    ```bash
    # 2. copy survivors into your corpus, forcing a .wasm suffix (the trainer
    #    and the corpus scripts below only pick up files ending in .wasm)
@@ -126,7 +139,45 @@ population is historical and family-concentrated. State this explicitly in
 any write-up: you will not get thousands of samples, and a model trained on
 survivors generalizes to those families, not to "cryptojacking" in general.
 
-Go get these three things, in this order:
+Go get these things, in this order:
+
+0. **What the WasmBench keyword filter catches (§1, step 1) -- you already
+   have it.** WasmBench swallowed two cryptojacking research datasets whole:
+   SEISMIC (`wenhao1006/SEISMIC`, `Jacarte/SEISMIC_reproduction`) and
+   MinerRay's crawl samples (`miner-ray/miner-ray.github.io`). Between them:
+   CryptoNight in plain, name-randomised, export-minified and obfuscated
+   builds; two Equihash miners; Nimiq's Argon2d search; a RandomX-era
+   `minero.cc` payload. That is the family variety route 1 alone never had.
+   **Provenance is a lead, not a label.** MinerRay's samples are "WebAssembly
+   found while crawling" and are mostly *not* miners (Unity games,
+   post-quantum crypto libraries, a barcode reader). Label each file from its
+   contents:
+
+   ```bash
+   npm run label-evidence -w @wasm-sentry/core -- /path/to/candidates > evidence.jsonl
+   ```
+
+   prints exports, imports, mining-related strings and the static analysis per
+   file. `_cryptonight_hash`, `_hash_cn`, `_loot_cn`, a `_<random>_create` /
+   `_destroy` / `_hash` triple, `mine` beside Zcash strings, or
+   `_nimiq_argon2_target` is a justification. A stripped module with minified
+   exports and no strings is not: leave it out of **both** classes. Leave out
+   the `*profiled*` files too (and anything exporting `_getI32AddCountLo`):
+   those are SEISMIC's instrumented copies, research artifacts rather than
+   payloads. Files the filter caught by accident go back into `benign/`, and
+   the crypto libraries among them are exactly the hard negatives worth having.
+
+   Expect antivirus to quarantine some of these on extraction (Windows Defender
+   took one as `Trojan:Win32/CoinMiner`). That is an independent confirmation
+   of the label and a sample you do not get; do not weaken the machine's
+   protection to keep it.
+
+   GitHub's code search does not index binaries, so searching for `.wasm`
+   miners finds almost nothing; listing the git trees of miner repositories
+   found ~10 distinct payloads, and carving `AGFzbQ...` base64 out of miner
+   pages found two more (one RandomX). Low yield, but it is where the
+   non-CryptoNight families outside WasmBench came from.
+
 
 1. **Open-source browser-miner repos with the compiled `.wasm` committed to
    git.** Real mining kernels, no malware handling involved. Search GitHub
