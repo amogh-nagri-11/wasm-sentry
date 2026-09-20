@@ -16,7 +16,8 @@
     "testbed": "tsx core/scripts/emit-fixtures.ts testbed && node scripts/prepare-testbed.mjs && npx --yes serve testbed -l 8080",
     "fixtures": "tsx core/scripts/emit-fixtures.ts testbed",
     "preview:ui": "node scripts/preview-ui.mjs",
-    "demo-harness": "npx --yes serve ~/wasm-sentry-demo-assets/miner-test-harness -l 8081"
+    "demo-harness": "npx --yes serve ~/wasm-sentry-demo-assets/miner-test-harness -l 8081",
+    "demo-harness-runtime": "npx --yes serve ~/wasm-sentry-demo-assets/runtime-test-harness -l 8082"
   },
   "engines": {
     "node": ">=22.12"
