@@ -26,7 +26,9 @@
     "dedupe-corpus": "tsx scripts/dedupe-corpus.ts",
     "cluster-corpus": "tsx scripts/cluster-corpus.ts",
     "split-holdout": "tsx scripts/split-holdout.ts",
-    "diagnose-corpus": "tsx scripts/diagnose-corpus.ts"
+    "diagnose-corpus": "tsx scripts/diagnose-corpus.ts",
+    "extract-sequences": "tsx scripts/extract-sequences.ts",
+    "label-evidence": "tsx scripts/label-evidence.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2"

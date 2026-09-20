@@ -57,7 +57,7 @@ const CATEGORIES: OpcodeCategory[] = [
  * Chosen as the operations that distinguish arithmetic kernels from everything
  * else, plus enough ordinary opcodes that "not a kernel" has somewhere to sit.
  */
-const OPCODE_VOCABULARY = [
+export const OPCODE_VOCABULARY = [
   "i32.add", "i32.sub", "i32.mul", "i32.and", "i32.or", "i32.xor",
   "i32.shl", "i32.shr_u", "i32.shr_s", "i32.rotl", "i32.rotr",
   "i64.add", "i64.mul", "i64.xor", "i64.shl", "i64.rotl",

@@ -1,12 +1,15 @@
 # Deep model track: pretrain + fine-tune an opcode-sequence classifier
 
 Full guide for the "fine-tuned model" discussed as an alternative to the
-current linear classifier. **Status: a design guide, not verified code.**
-Unlike `docs/DATASET-PLAN.md`'s four corpus scripts (which were written,
-typechecked, and smoke-tested against real fixtures), nothing below has been
-run — there's no PyTorch/ONNX toolchain in this environment and no trained
-model to validate against. Treat the code blocks as a precise skeleton to
-implement and test yourself, not a working artifact.
+current linear classifier. **Status: the design, plus working plumbing, and no
+result.** Sequence extraction is built and tested
+(`core/src/ml/sequences.ts`, `core/scripts/extract-sequences.ts`). The model
+and training loop below exist as runnable code in
+`training/opcode_transformer.py`, exercised end to end on a CPU with a handful
+of sequences. Nothing has been trained on a real corpus, so nothing here says
+whether the idea works. `docs/COLAB-TRAINING-GUIDE.md` is the step-by-step;
+the code blocks in this file are the design sketch and the script is the
+authority where they differ.
 
 ## 0. The decision, stated once
 
@@ -56,7 +59,7 @@ cp /tmp/npm-wasm/**/*.wasm "$PRETRAIN_POOL"/ 2>/dev/null
 find "$PRETRAIN_POOL" -type f | wc -l   # expect ~8,000-9,000
 ```
 
-## 2. New step: extract opcode sequences (not yet built — build this first)
+## 2. Extract opcode sequences (built: `core/scripts/extract-sequences.ts`)
 
 Neither `analyzeWasm` nor `vectorise` currently emit a raw instruction
 *sequence* — only aggregate counts and ratios (that's what the linear model
@@ -64,7 +67,17 @@ needs, and it's correct that it doesn't carry more). The deep model needs
 the sequence itself, so this is one new script:
 `core/scripts/extract-sequences.ts`, run once per pool.
 
-**Behavior it needs (write this before anything else):**
+**As built, it differs from the sketch below in three ways**, all recorded in
+`core/src/ml/sequences.ts`: the vocabulary has six special tokens (`PAD`,
+`MASK`, `CLS`, `UNK`, `OTHER`, `SEP`), 44 ids in all, written to a
+`.vocab.json` beside the output so nothing downstream hard-codes a size; a
+function too long for the window is cut at the header of its largest loop
+rather than from the top, because a kernel's prologue looks like anyone's; and
+when the primary function does not fill the window, the next-largest functions
+follow behind a `SEP`, up to four. Bodies are re-decoded for the chosen
+functions only, so the feature walk did not need a per-instruction hook.
+
+**The original specification:**
 
 1. For each `.wasm` file, run `analyzeWasm` as today to get `kernelCandidate`
    and function boundaries — reuse the existing walk in
@@ -114,7 +127,7 @@ pip install torch onnx onnxruntime numpy
 
 No `transformers` dependency — the model is small enough (see below) to
 write directly in ~150 lines of PyTorch, which avoids pulling in a
-multi-gigabyte dependency for a 2-3M parameter model and keeps the
+multi-gigabyte dependency for a sub-million parameter model and keeps the
 architecture fully visible instead of hidden behind a library default.
 
 ## 4. Architecture
@@ -124,13 +137,13 @@ LLM, and it should be:
 
 | Hyperparameter | Value | Why |
 |---|---|---|
-| Vocabulary size | `len(OPCODE_VOCABULARY) + 4` (≈40) | Matches the project's existing opcode set + special tokens |
+| Vocabulary size | `len(OPCODE_VOCABULARY) + 6` = 44 | Matches the project's existing opcode set + special tokens |
 | Sequence length | 512 | §2.4 |
 | Embedding dim | 128 | Small vocab doesn't need more |
 | Layers | 4 | Enough to compose "this loop body does bitwise ops on loaded memory," not more |
 | Attention heads | 4 | Standard 32-dim-per-head split |
 | Feedforward dim | 512 | 4x embedding, standard ratio |
-| Parameters | ~2-3M | Trains on a laptop CPU in hours, on the optional GPU in minutes |
+| Parameters | 870,317 (counted; an earlier draft guessed 2-3M) | Measured on a laptop CPU: ~11 minutes per pretraining epoch over 5,668 sequences |
 
 This is intentionally far smaller than any general-purpose language model —
 the vocabulary is ~40 tokens, not ~50,000, because it only ever has to
@@ -298,7 +311,7 @@ shipping this at all.
 
 ## 9. What to expect
 
-Realistically: on a fine-tuning set of a few hundred examples, a 2-3M
+Realistically: on a fine-tuning set of a few hundred examples, a 0.9M
 parameter transformer — even pretrained — is not guaranteed to beat a
 73-feature linear model that already encodes the exact structural signals
 (bitwise ratio, kernel candidate, memory shape) domain knowledge says matter.
