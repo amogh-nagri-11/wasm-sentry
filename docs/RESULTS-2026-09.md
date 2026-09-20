@@ -57,6 +57,7 @@ quarantined as `Trojan:Win32/CoinMiner` on extraction.
 | `dedupe-corpus` | 7,529 | 76 |
 | `cluster-corpus` at cosine 0.999 (731 clusters) | 2,047 | 20 |
 | `split-holdout` | 1,694 train / 353 held out | 14 train / 6 held out |
+| + npm harvest (63 new modules, 22 of them carved from `hash-wasm`), pipeline re-run | 1,721 train / 356 held out | 14 train / 6 held out |
 
 Seventy-six samples are twenty programs. That is the honest size of the
 malicious class. What the variety bought is four proof-of-work algorithms in
@@ -64,14 +65,21 @@ training (CryptoNight, Equihash, RandomX, yespower) where there was one.
 
 ## 3. Linear classifier against the heuristics, same folds
 
-5-fold, 1,708 modules (1,694 benign, 14 malicious), `npm run train`:
+5-fold, `npm run train`, before and after the npm hard negatives
+(`hash-wasm`'s Argon2, scrypt and friends, `argon2-browser`, libsodium) were added:
 
-| | Precision | Recall | F1 | AUC | TP | FP | FN |
-|---|---|---|---|---|---|---|---|
-| classifier | 0.302 | 0.929 | 0.456 | 0.995 | 13 | 30 | 1 |
-| heuristics | 0.167 | 0.214 | 0.188 | 0.716 | 3 | 15 | 11 |
+| | Benign | Precision | Recall | F1 | AUC | TP | FP | FN |
+|---|---|---|---|---|---|---|---|---|
+| classifier | 1,694 | 0.302 | 0.929 | 0.456 | 0.995 | 13 | 30 | 1 |
+| heuristics | 1,694 | 0.167 | 0.214 | 0.188 | 0.716 | 3 | 15 | 11 |
+| classifier, with hard negatives | 1,721 | 0.250 | 0.786 | 0.379 | 0.989 | 11 | 33 | 3 |
+| heuristics, with hard negatives | 1,721 | 0.150 | 0.214 | 0.176 | 0.714 | 3 | 17 | 11 |
 
-Read with the base rate in mind: 30 false alarms is 1.8% of benign modules, and
+Twenty-seven memory-hard hashing libraries cost the classifier two detections
+and three more false alarms. The plan said this is the test that matters, and
+the model does not pass it cleanly. The second pair of rows is the result.
+
+Read with the base rate in mind: 33 false alarms is 1.9% of benign modules, and
 at that rate nearly every alert a user saw would be wrong. Strongest weights
 were `log_memoryInitialPages`, `log_kernel_loopSize`, `memory_bounded`,
 `op_i32.shl`, `op_i64.load`; `stripped` carried −0.30. Memory shape is a real
