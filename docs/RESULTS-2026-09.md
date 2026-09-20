@@ -7,7 +7,8 @@ describes one corpus assembled on one machine. None of it is a detection rate.
 **The decision first: no model ships.** The linear classifier beat the
 heuristics on this corpus, and it still does not clear the bar, because after
 near-duplicate collapse the corpus holds 14 training positives and the plan's
-own floor for running the trainer at all is 25. The holdout was not evaluated.
+own floor for running the trainer at all is 25. The transformer lost to the
+linear classifier outright. The holdout was not evaluated.
 
 ## 1. Two defects found on the way, both of which invalidate earlier numbers
 
@@ -109,14 +110,33 @@ model.
 
 ## 5. Transformer track
 
-Not run to completion, so there is no transformer result. Sequences were
-extracted for real (1,708 fine-tuning, 359 holdout, 5,966 pretraining, with
-the holdout and the near-duplicates of held-out samples kept out of the pool).
-A CPU pretraining run reached two epochs, validation loss 2.05 then 1.81
-against 3.78 for uniform guessing, before the machine ran short of memory and
-the job was stopped. No fine-tuning or cross-validation ran. With 14 training
-positives the comparison would not have supported a conclusion either way; the
-commands in `docs/COLAB-TRAINING-GUIDE.md` run it on a GPU in minutes.
+Run on a laptop CPU, shortened to fit: 6 pretraining epochs over 5,994
+unlabelled sequences (holdout and the near-duplicates of held-out samples kept
+out), then 5-fold cross-validation at 5 epochs per fold on the same 1,735
+modules as §3. Pretraining validation loss fell from 2.00 to 1.50 against 3.78
+for uniform guessing, so the model learned opcode structure.
+
+| Same 1,735 modules, out-of-fold | Precision | Recall | F1 | AUC | TP | FP | FN |
+|---|---|---|---|---|---|---|---|
+| transformer, pretrained | 1.000 | 0.143 | 0.250 | 0.903 | 2 | 0 | 12 |
+| linear classifier | 0.250 | 0.786 | 0.379 | 0.989 | 11 | 33 | 3 |
+| heuristics | 0.150 | 0.214 | 0.176 | 0.714 | 3 | 17 | 11 |
+
+**It does not clear the bar.** It loses to the linear classifier on F1 and on
+AUC, so it is not integrated, and the holdout was not touched.
+
+The ranking underneath is more informative than the threshold. The seven
+highest-scoring positives are all CryptoNight, with at most 12 benign modules
+above any of them. The seven lowest are every Equihash, RandomX and yespower
+sample plus `webminer_v1`, ranked below 39 to 1,287 benign modules. With one to
+three examples per non-CryptoNight family, a sequence model learns CryptoNight
+and nothing else, which is the outcome this document's §6 predicts for any
+model on this corpus.
+
+Not run: the no-pretraining ablation (cut for time), so nothing here says
+whether pretraining helped. Not tuned: 5 epochs at one learning rate. A GPU run
+following `docs/COLAB-TRAINING-GUIDE.md` would do both in minutes, and would be
+worth doing only once there are more distinct malicious programs.
 
 ## 6. What is still missing
 
